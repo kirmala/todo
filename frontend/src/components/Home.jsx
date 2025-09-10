@@ -9,7 +9,7 @@ const Home = () => {
             <div className="space-x-4">
                 <Link
                     to="/tasks"
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                    className="px-20 py-10 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
                 >
                     Tasks
                 </Link>

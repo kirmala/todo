@@ -1,212 +1,97 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
 
 const Tasks = () => {
   const [tasks, setTasks] = useState([]);
-  const [error, setError] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-  const [newTask, setNewTask] = useState({
-    description: '',
-    status: 'not completed',
-  });
-
-  const fetchTasks = async () => {
-    try {
-      const task = await axios.get('/tasks.json')
-      setTasks(tasks);
-      setError('')
-    } catch (err) {
-      setError('Failed to load tasks.');
-    }
-  };
+  const [newTask, setNewTask] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchTasks();
+    const savedTasks = localStorage.getItem("tasks");
+    if (savedTasks) {
+      setTasks(JSON.parse(savedTasks));
+    }
   }, []);
 
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await axios.post(
-        'http://localhost:8080/tasks',
-        newTask,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      fetchTasks()
-      setNewTask({ title: '', description: '', due_date: '', status: 'not comleted'});
-      setIsCreating(false);
-    } catch (err) {
-      setError('Failed to create a new task.');
+  
+  useEffect(() => {
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+  }, [tasks]);
+
+  const addTask = () => {
+    if (!newTask.trim()) {
+      setError("Task description cannot be empty.");
+      return;
     }
+    setTasks([...tasks, { description: newTask, done: false }]);
+    setNewTask("");
+    setError("");
   };
 
-
-  const handleUpdate = async (taskID, updatedTask) => {
-    try {
-      await axios.put(
-        `http://localhost:8080/tasks/${taskID}`,
-        updatedTask,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      fetchTasks();
-    } catch (err) {
-      setError('Failed to update the task.');
-    }
+  const updateTask = (index, updatedTask) => {
+    const updatedTasks = [...tasks];
+    updatedTasks[index] = { ...updatedTasks[index], ...updatedTask };
+    setTasks(updatedTasks);
   };
 
-  const handleDelete = async (taskID) => {
-    try {
-      await axios.delete(`http://localhost:8080/tasks/${taskID}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-        },
-      });
-      fetchTasks();
-    } catch (err) {
-      setError('Failed to delete the task.');
-    }
+  const deleteTask = (index) => {
+    setTasks(tasks.filter((_, i) => i !== index));
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <h1 className="text-3xl font-bold mb-6">Your Tasks</h1>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+      <h1 className="text-3xl font-bold mb-6">TO-DO List</h1>
       {error && <p className="text-red-500 mb-4">{error}</p>}
-      <div className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-lg">
-      {tasks.map((task) => {
-        const isOverdue = new Date(task.due_date) < new Date();
-        return (
-          <div
-            key={task.ID}
-            className={`flex flex-col md:flex-row justify-between items-center border-b border-gray-200 py-4 ${
-              isOverdue && task.status !== 'completed' ? 'bg-red-100' : ''
-            }`}
+      <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-md">
+        <div className="flex mb-4">
+          <input
+            type="text"
+            value={newTask}
+            onChange={(e) => setNewTask(e.target.value)}
+            placeholder="New task..."
+            className="flex-1 border px-3 py-2 rounded-l-md"
+          />
+          <button
+            onClick={addTask}
+            className="bg-blue-500 text-white px-4 rounded-r-md hover:bg-blue-600"
           >
-            <div className="w-full md:w-1/3">
-              <input
-                type="text"
-                defaultValue={task.title}
-                onBlur={(e) =>
-                  handleUpdate(task.ID, { ...task, title: e.target.value })
-                }
-                className="w-full p-2 border border-gray-300 rounded-lg mb-2 md:mb-0"
-              />
-            </div>
-            <div className="w-full md:w-1/3">
-              <input
-                type="text"
-                defaultValue={task.description}
-                onBlur={(e) =>
-                  handleUpdate(task.ID, { ...task, description: e.target.value })
-                }
-                className="w-full p-2 border border-gray-300 rounded-lg mb-2 md:mb-0"
-              />
-            </div>
-            <div className="w-full md:w-1/6">
-              <input
-                type="date"
-                defaultValue={task.due_date}
-                onBlur={(e) =>
-                  handleUpdate(task.ID, { ...task, due_date: e.target.value })
-                }
-                className="w-full p-2 border border-gray-300 rounded-lg"
-              />
-            </div>
-            <div className="w-full md:w-1/6">
-              <select
-                defaultValue={task.status}
-                onBlur={(e) =>
-                  handleUpdate(task.ID, { ...task, status: e.target.value })
-                }
-                className="w-full p-2 border border-gray-300 rounded-lg"
-              >
-                <option value="not completed">Not Completed</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
-            <div className="flex space-x-2 mt-4 md:mt-0">
+            Add
+          </button>
+        </div>
+
+        {tasks.length === 0 && <p className="text-gray-500 text-center">No tasks</p>}
+
+        <div className="space-y-2">
+          {tasks.map((task, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between bg-gray-50 p-2 rounded-md"
+            >
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={task.done}
+                  onChange={() => updateTask(index, { done: !task.done })}
+                />
+                <input
+                  type="text"
+                  value={task.description}
+                  onChange={(e) =>
+                    updateTask(index, { description: e.target.value })
+                  }
+                  className={`border px-2 py-1 rounded-md ${
+                    task.done ? "line-through text-gray-400" : ""
+                  }`}
+                />
+              </div>
               <button
-                onClick={() => handleDelete(task.ID)}
-                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition"
+                onClick={() => deleteTask(index)}
+                className="text-red-500 font-bold px-2"
               >
-                Delete
+                ×
               </button>
             </div>
-          </div>
-        );
-      })}
-        {isCreating ? (
-          <form
-            onSubmit={handleCreateTask}
-            className="mt-6 w-full max-w-2xl bg-white p-4 rounded-lg shadow-lg"
-          >
-            <h2 className="text-xl font-bold mb-4">Create New Task</h2>
-            <input
-              type="text"
-              placeholder="Title"
-              value={newTask.title}
-              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-              className="w-full p-2 border border-gray-300 rounded-lg mb-4"
-              required
-            />
-            <textarea
-              placeholder="Description"
-              value={newTask.description}
-              onChange={(e) =>
-                setNewTask({ ...newTask, description: e.target.value })
-              }
-              className="w-full p-2 border border-gray-300 rounded-lg mb-4"
-              required
-            />
-            <input
-              type="date"
-              value={newTask.due_date}
-              onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
-              className="w-full p-2 border border-gray-300 rounded-lg mb-4"
-              required
-            />
-            <select
-              value={newTask.status}
-              onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
-              className="w-full p-2 border border-gray-300 rounded-lg mb-4"
-              required
-              >
-              <option value="not completed">Not Completed</option>
-              <option value="completed">Completed</option>
-            </select>
-            <div className="flex justify-end space-x-4">
-              <button
-                type="button"
-                onClick={() => setIsCreating(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
-              >
-                Create
-              </button>
-            </div>
-          </form>
-      ) : (
-        <button
-          onClick={() => setIsCreating(true)}
-          className="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition"
-        >
-          Create Task
-        </button>
-      )}
+          ))}
+        </div>
       </div>
     </div>
   );
